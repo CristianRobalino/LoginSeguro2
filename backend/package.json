@@ -24,7 +24,8 @@
     "migration:revert": "npm run typeorm -- migration:revert -d src/config/typeorm.config.ts",
     "seed:admin": "ts-node -r tsconfig-paths/register src/scripts/seed-admin.ts",
     "seed:admin:dev": "ts-node -r tsconfig-paths/register src/scripts/seed-admin-with-face.ts",
-    "create:admin": "ts-node -r tsconfig-paths/register src/scripts/create-admin.ts"
+    "create:admin": "ts-node -r tsconfig-paths/register src/scripts/create-admin.ts",
+    "security:scan": "node scripts/security-scan.js"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
