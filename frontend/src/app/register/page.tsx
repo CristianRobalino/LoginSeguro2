@@ -73,7 +73,13 @@ export default function RegisterPage() {
             }, 2000);
         } catch (err: any) {
             console.error('Error en verificación facial:', err);
-            setError(err.response?.data?.message || 'Error al registrar rostro');
+
+            // Manejo específico para rostro duplicado (409 Conflict)
+            if (err.response?.status === 409) {
+                setError('Este rostro ya está registrado en el sistema. Si ya tienes una cuenta, por favor inicia sesión.');
+            } else {
+                setError(err.response?.data?.message || 'Error al registrar rostro');
+            }
             setLoading(false);
         }
     }

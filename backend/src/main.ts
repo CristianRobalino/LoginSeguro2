@@ -22,7 +22,22 @@ async function bootstrap() {
 
   // CORS - Configuración segura
   app.enableCors({
-    origin: configService.get('CORS_ORIGIN') || 'http://localhost:3000',
+    origin: (origin, callback) => {
+      // Permitir peticiones sin origin (como Postman) o desde localhost/red local
+      const allowedOrigins = [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}:3000$/, // Cualquier IP local en puerto 3000
+      ];
+
+      if (!origin || allowedOrigins.some(allowed =>
+        typeof allowed === 'string' ? allowed === origin : allowed.test(origin)
+      )) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

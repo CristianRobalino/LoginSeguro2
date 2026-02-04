@@ -103,6 +103,9 @@ export class AuthService {
             throw new BadRequestException('Descriptor facial inválido. Debe tener 128 elementos.');
         }
 
+        // VALIDACIÓN: Verificar que el rostro no esté ya registrado
+        await this.checkDuplicateFace(dto.faceDescriptor, dto.email);
+
         // Guardar descriptor facial
         user.faceDescriptor = dto.faceDescriptor;
         user.isActive = true;
@@ -146,6 +149,9 @@ export class AuthService {
         if (!dto.faceDescriptor || dto.faceDescriptor.length !== 128) {
             throw new BadRequestException('Descriptor facial inválido. Debe tener 128 elementos.');
         }
+
+        // VALIDACIÓN: Verificar que el rostro no esté ya registrado
+        await this.checkDuplicateFace(dto.faceDescriptor, dto.email);
 
         // Guardar descriptor facial y activar usuario
         user.faceDescriptor = dto.faceDescriptor;
@@ -309,6 +315,53 @@ export class AuthService {
                 role: user.role,
             },
         };
+    }
+
+    /**
+     * Verifica si un descriptor facial ya está registrado en el sistema
+     * Previene que un usuario cree múltiples cuentas con el mismo rostro
+     */
+    private async checkDuplicateFace(newDescriptor: number[], excludeEmail?: string): Promise<void> {
+        // Obtener todos los usuarios con descriptor facial registrado
+        const usersWithFaces = await this.userRepository.find({
+            where: {},
+            select: ['id', 'email', 'faceDescriptor'],
+        });
+
+        // Filtrar usuarios que tienen descriptor facial válido
+        const validUsers = usersWithFaces.filter(
+            user => user.faceDescriptor &&
+                user.faceDescriptor.length === 128 &&
+                user.email !== excludeEmail // Excluir el email actual (para actualizaciones)
+        );
+
+        // Comparar el nuevo descriptor con cada descriptor existente
+        for (const existingUser of validUsers) {
+            // TypeScript safety: verificar que el descriptor existe
+            if (!existingUser.faceDescriptor) continue;
+
+            const distance = this.compareFaceDescriptors(
+                existingUser.faceDescriptor,
+                newDescriptor
+            );
+
+            // Si la distancia es menor al umbral, es el mismo rostro
+            if (distance < this.FACE_MATCH_THRESHOLD) {
+                // Registrar intento de duplicación en auditoría
+                await this.createAuditLog(
+                    'duplicate_face_attempt',
+                    null,
+                    `Intento de registro con rostro duplicado. Coincide con usuario: ${existingUser.email}`,
+                    undefined,
+                    undefined,
+                    false,
+                );
+
+                throw new ConflictException(
+                    'Este rostro ya está registrado en el sistema. Si ya tienes una cuenta, por favor inicia sesión.'
+                );
+            }
+        }
     }
 
     /**
